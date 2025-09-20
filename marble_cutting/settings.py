@@ -27,7 +27,7 @@ SECRET_KEY = 'django-insecure-xg!k#00*2)vuscw5*2jok5mee&r7gd00mg+et6!sb_139-o2=@
 # DEBUG = True
 DEBUG = True   # For Production
 
-ALLOWED_HOSTS = ['electrocomchittor.pythonanywhere.com', '127.0.0.1']
+ALLOWED_HOSTS = ['*']
 
 # Application definition
 
