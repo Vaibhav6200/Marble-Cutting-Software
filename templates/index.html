@@ -1,0 +1,316 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load custom_filters %}
+{% block title %} Electrocom {% endblock %}
+{% block stylesheets %}
+    <style>
+        #bin svg {
+          width: 690px;
+          height: 390px;
+          border: 1px solid black;
+        }
+        rect {
+          fill: #add8e6;
+          stroke: #000000;
+          stroke-width: 1;
+        }
+        #graph_section {
+            height: 80vh;
+            overflow-y: auto;
+        }
+    </style>
+{% endblock%}
+
+{% block content %}
+    {% include 'includes/navbar.html' %}
+    <div class="row mt-3" style="width: 95%; margin: auto;">
+        <!-- INVENTORY INPUT SECTION -->
+        <div class="col-12 col-sm-6 col-md-5" id="input_section">
+            <!-- RESULTS DISPLAY SECTION -->
+            {% if show_statistics %}
+            <div class="mb-5" id="results_section">
+                <h2 class="mb-4">Statistics</h2>
+                <div class="card mb-3">
+                    <div class="card-header">
+                        Global Statistics
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col">Total area used</div>
+                            <div class="col">{{ result.global_total_area_used|div:144 }} sq. ft.</div>
+                        </div>
+                        <div class="row">
+                            <div class="col">Total area wasted</div>
+                            <div class="col">{{ global_total_area_wasted|div:144 }} sq. ft.</div>
+                        </div>
+                        <div class="row">
+                            <div class="col">Total area of single slab</div>
+                            <div class="col">{{ result.slab_total_area|div:144 }} sq. ft.</div>
+                        </div>
+                        <div class="row">
+                            <div class="col">Total area used (%)</div>
+                            <div class="col">{{ global_area_percentage }}%</div>
+                        </div>
+                        <div class="row">
+                            <div class="col">Total area wasted (%)</div>
+                            <div class="col">{{ global_waste_area_percentage }}%</div>
+                        </div>
+                        <div class="row">
+                            <div class="col">Total no of slabs used</div>
+                            <div class="col">{{ result.total_bins_used }}</div>
+                        </div>
+                        <div class="row">
+                            <div class="col">Slab Size</div>
+                            <div class="col">{{ slab_l }} x {{ slab_w }}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <span class="me-4">Sheet Statistics</span>
+                        <span class="">
+                            <button class="btn" onclick="sheetStatistics(-1)"><i class="fa-solid fa-less-than"></i></button>
+                            <span id="current_layout"></span>
+                            <button class="btn" onclick="sheetStatistics(1)"><i class="fa-solid fa-greater-than"></i></button>
+                        </span>
+                    </div>
+                    <div id="statisticsContent">
+                        {% for data in result.plots %}
+                        <div class="card-body" id="sheet-{{ forloop.counter }}" style="display: {% if forloop.counter == 1 %}block{% else %}none{% endif %};">
+                            <div class="row">
+                                <div class="col">Area occupied</div>
+                                <div class="col">{{ data.slab_used_area|div:144 }} sq. ft.</div>
+                            </div>
+                            <div class="row">
+                                <div class="col">Area wasted</div>
+                                <div class="col">{{ data.slab_wasted_area|div:144 }} sq. ft.</div>
+                            </div>
+                            <div class="row">
+                                <div class="col">Area occupied (%)</div>
+                                <div class="col">{{ data.slab_percentage_occupied }}</div>
+                            </div>
+                            <div class="row">
+                                <div class="col">Area wasted (%)</div>
+                                <div class="col">{{ data.slab_percentage_wasted }}</div>
+                            </div>
+                            <div class="row">
+                                <div class="col">Layout count</div>
+                                <div class="col">{{ data.layout_count }}</div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="p-3 mt-3 border shadow-sm">
+                    NOTE: These calculations are done by adding some cutting blade margin of 5mm to each rectangle.
+                    <br>5mm in width
+                    <br>5mm in height
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="mb-5">
+                <h3 class="mb-3">Input Tiles Dimensions</h3>
+                <form action="{% url 'bin_packing:index' %}" id="panelForm" method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="inventory_input_type" value="manual">
+                    <input type="hidden" name="slab_length" id="manual_slab_length" value="{% if slab_l %}{{ slab_l }}{% else %}138{% endif %}">
+                    <input type="hidden" name="slab_width" id="manual_slab_width" value="{% if slab_w %}{{ slab_w }}{% else %}78{% endif %}">
+                    <table class="table" id="panelTable">
+                        <thead>
+                            <tr>
+                                <th>Length</th>
+                                <th>Width</th>
+                                <th>Qty</th>
+                                <th>Code</th>
+                                <th>Polish Edge (L)</th>
+                                <th>Polish Edge (W)</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><input type="number" name="length[]" class="form-control" min="0" step="any" required></td>
+                                <td><input type="number" name="width[]" class="form-control" min="0" step="any" required></td>
+                                <td><input type="number" name="quantity[]" class="form-control" min="0" step="any" required></td>
+                                <td><input type="text" name="code[]" class="form-control" required></td>
+                                <td><input type="number" name="polish_edge_l[]" class="form-control" min="0" max="2" step="any" required></td>
+                                <td><input type="number" name="polish_edge_w[]" class="form-control" min="0" max="2" step="any" required></td>
+                                <td><button type="button" class="btn btn-primary addRow">+</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <button type="submit" class="btn btn-success"><i class="fa-solid fa-play"></i> Calculate</button>
+                </form>
+            </div>
+            <div class="mb-5">
+                <h3>Import File</h3>
+                <form action="{% url 'bin_packing:index' %}" id="csv_upload_form" method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <input type="hidden" name="inventory_input_type" value="csv">
+                    <input type="hidden" name="slab_length" id="csv_slab_length" value="{% if slab_l %}{{ slab_l }}{% else %}138{% endif %}">
+                    <input type="hidden" name="slab_width" id="csv_slab_width" value="{% if slab_w %}{{ slab_w }}{% else %}78{% endif %}">
+                    <input class="form-control mb-3" name="csv_file" id="csv_file_input" type="file">
+                </form>
+            </div>
+            <div class="mb-5">
+                <h3>Input Slab Dimensions</h3>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Length</th>
+                            <th>Width</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><input class="form-control" name="slab_length" id="slab_length" type="number" value="{% if slab_l %}{{ slab_l }}{% else %}138{% endif %}" min="0"></td>
+                            <td><input class="form-control" name="slab_width" id="slab_width" type="number" value="{% if slab_w %}{{ slab_w }}{% else %}78{% endif %}" min="0"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            {% if panel_obj %}
+                <div class="mb-5">
+                    <h3>Download</h3>
+                    <div class="d-flex">
+                        <form method="post" action="{% url 'bin_packing:zip_file_handle' %}" id="download_csv_form" class="me-3">
+                            {% csrf_token %}
+                            <input type="hidden" id="panel_obj_id" name="panel_obj_id" value="{{ panel_obj.id }}">
+                            <button class="btn btn-success" type="button" id="download_button"> Zip File <i class="fa-solid fa-file-zipper"></i> </button>
+                        </form>
+                        {% if panel_obj.pdf_file %}
+                            <a href="{{ panel_obj.pdf_file.url }}" class="btn btn-success me-3">PDF File <i class="fa-solid fa-file"></i></a>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- GRAPH PLOT SECTION -->
+        <div class="col-12 col-sm-6 col-md-7 text-center" id="graph_section">
+            <!-- Dynamic SVGs will be appended here -->
+        </div>
+    </div>
+{% endblock %}
+
+
+{% block javascripts %}
+    <script src="{% static 'js/script.js' %}"></script>
+    <script>
+        function roundToTwo(num) {
+            return Math.round(num * 100) / 100;
+        }
+        {% if result %}
+        document.addEventListener('DOMContentLoaded', function() {
+            const result = {{ result|safe }}; // Django template rendering the data safely
+            const data = result['plots'];
+            let cutting_blade_margin_5mm = 5 / 25.4;
+
+            // declaring container width and heights
+            let container_height = {{ slab_w }}
+            let container_width = {{ slab_l }}
+
+            data.forEach((plot, index) => {
+                // Create a container for each plot
+                const plotContainer = document.createElement('div');
+                plotContainer.className = 'plot-container';
+                plotContainer.style.margin = '0 0 70px 0';
+                plotContainer.style.border = '1px solid #ccc';
+                plotContainer.style.padding = '0';
+                plotContainer.classList.add('shadow-sm');
+
+                const layout_number = document.createElement('h2');
+                layout_number.innerHTML = `Layout ${index + 1} / {{ unique_layouts_count }}`;
+                plotContainer.appendChild(layout_number);
+
+                // Create SVG element for each plot
+                const svgContainer = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+                svgContainer.setAttribute("viewBox", `0 0 ${container_width} ${container_height}`); // Set the view box based on slab dimensions
+                svgContainer.setAttribute("style", "border: 1px solid black;");
+                plotContainer.appendChild(svgContainer);
+
+                // Add rectangles to the SVG
+                plot.rectangles.forEach(rect => {
+                    let actual_width = roundToTwo(rect.width - cutting_blade_margin_5mm);
+                    let actual_height = roundToTwo(rect.height - cutting_blade_margin_5mm);
+
+                    const rectElem = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+                    rectElem.setAttribute("x", rect.x);
+                    rectElem.setAttribute("y", container_height - rect.y - rect.height); // Invert y-axis calculation
+                    rectElem.setAttribute("width", rect.width);
+                    rectElem.setAttribute("height", rect.height);
+                    rectElem.setAttribute('style', 'stroke: #000000; stroke-width: 0.1; fill: #add8e6;'); // Light blue fill
+                    svgContainer.appendChild(rectElem);
+
+                    // Tooltip on hover
+                    const tooltip = document.createElement("div");
+                    rectElem.addEventListener('mouseover', function(event) {
+                        tooltip.innerHTML = `Width: ${actual_width} <br>Height: ${actual_height} <br>Area: ${actual_width * actual_height} <br>Product Code: ${rect.code} <br>Polish Length: ${rect.polish_edge_l} <br>Polish Width: ${rect.polish_edge_w} <br>RFT: ${actual_height * rect.polish_edge_l + actual_width * rect.polish_edge_w}`;
+                        tooltip.style.position = 'absolute';
+                        tooltip.style.left = `${event.pageX + 10}px`;
+                        tooltip.style.top = `${event.pageY + 10}px`;
+                        tooltip.style.padding = '5px';
+                        tooltip.style.background = 'white';
+                        tooltip.style.border = '1px solid black';
+                        tooltip.style.zIndex = '1000';
+                        document.body.appendChild(tooltip);
+                    });
+                    rectElem.addEventListener('mouseout', function() {
+                        document.body.removeChild(tooltip);
+                    });
+                });
+
+                // Append each plot container to the main section
+                document.querySelector('#graph_section').appendChild(plotContainer);
+            });
+        });
+        {% endif %}
+    </script>
+    <script>
+        let download_button = document.getElementById('download_button')
+        if (download_button){
+            download_button.addEventListener('click', function() {
+                download_button.disabled = true;
+                let formData = new FormData(document.getElementById('download_csv_form'));
+                fetch('{% url 'bin_packing:zip_file_handle' %}',{
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': formData.get('csrfmiddlewaretoken'),
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if(data.url) {
+                        window.location.href = data.url;  // This triggers the download
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+            });
+        }
+    </script>
+    <script>
+        let currentIndex = 1;
+        let totalSheets = {{ unique_layouts_count }};
+        document.getElementById('current_layout').innerHTML = currentIndex + ' / ' + totalSheets;
+        function sheetStatistics(direction) {
+            // Hide current sheet
+            document.getElementById('sheet-' + currentIndex).style.display = 'none';
+
+            // Calculate new index
+            currentIndex += direction;
+            if (currentIndex < 1) currentIndex = totalSheets;
+            if (currentIndex > totalSheets) currentIndex = 1;
+
+            // Show new sheet
+            document.getElementById('sheet-' + currentIndex).style.display = 'block';
+
+            // Update the sheet index display
+            document.getElementById('current_layout').innerHTML = currentIndex + ' / ' + totalSheets;
+        }
+    </script>
+{% endblock %}
+
